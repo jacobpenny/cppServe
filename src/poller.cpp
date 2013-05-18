@@ -11,7 +11,8 @@
 
 #define MAXEVENTS 64
 
-Poller::Poller(const Acceptor& a) : acceptor_(a) 
+Poller::Poller(const Acceptor& a, threadsafe_queue<Connection*>& queue) 
+: acceptor_(a), work_queue_(queue)
 {
   if (-1 == (epoll_fd_ = epoll_create1(0))) {
     throw std::runtime_error("epoll_create1");
@@ -48,7 +49,8 @@ void Poller::start()
         listen_fd_handler();
       } else if (events[i].events & EPOLLIN) {
         // A socket is ready to read
-        print_data(event_fd); // temporary
+        work_queue_.push(connection_info);
+        //print_data(event_fd); // temporary
       }
     }
   }
