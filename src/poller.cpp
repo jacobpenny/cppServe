@@ -81,24 +81,20 @@ void Poller::add_to_read_poll(int fd)
   }
 }
 
-void Poller::print_data(int fd) {
-  int count = 0;
+void Poller::print_data(int fd) const {
+  int count;
   char buf[512];
 
   while (0 < (count = read(fd, buf, sizeof buf))) {
-    /* Write the buffer to standard output */
-    int s = write(1, buf, count);
-    if (s == -1) {
-      abort();
+    if (-1 == (write(1, buf, count))) {
+      throw std::runtime_error("read");
     }
   }
 
   if (-1 == count && EAGAIN != errno) {
-    // There has been an unexpected error, throw
     throw std::runtime_error("read");
   } else if (count == 0) {
-    /* End of file. The remote has closed the
-       connection. */
-    // close socket and remove from epoll_fd_
+    // The remote has closed the connection.
+    // TODO what happens here with keep-alive connections?
   }
 }

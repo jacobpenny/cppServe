@@ -2,10 +2,6 @@
 #define __POLLER_H__
 
 class Acceptor;
-/* 
-  This class blah blah
-
-*/
 
 class Poller {
   public:
@@ -17,7 +13,7 @@ class Poller {
     void write_fd_handler(struct epoll_event &ev);
     void add_to_read_poll(int fd);
     void start();
-    void print_data(int fd);
+    void print_data(int fd) const;
 
   private:
     const Acceptor& acceptor_;
