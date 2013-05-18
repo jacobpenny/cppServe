@@ -1,5 +1,5 @@
-#ifndef CONNECTION_H
-#define CONNECTION_H
+#ifndef __CONNECTION_H__
+#define __CONNECTION_H__
 
 #include <vector>
 #include <string>
@@ -7,17 +7,12 @@
 class Connection {
   public:
     int fd;
-    std::vector<char> *buffer;
     std::string address;
+    std::vector<char> *buffer;
 
-    Connection();
+    Connection(int fd, std::string addr);
     ~Connection();
 };
-
-Connection::Connection() : buffer(new std::vector<char>(1024)) {}
-Connection::~Connection() { delete buffer; }
-
-
 
 #endif
 

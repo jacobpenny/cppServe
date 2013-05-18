@@ -1,4 +1,5 @@
 #include "acceptor.h"
+#include "connection.h"
 #include "utils.h"
 
 #include <stdexcept>
@@ -58,12 +59,12 @@ Acceptor::~Acceptor()
   // TODO
 }
 
-std::vector<int> Acceptor::accept_connections() const
+std::vector<Connection*> Acceptor::accept_connections() const
 {
   static struct sockaddr_storage client_addr;
   static socklen_t sin_size;
   static int client_fd;
-  std::vector<int> fds;
+  std::vector<Connection*> connections;
 
   sin_size = sizeof(client_addr);
 
@@ -82,14 +83,15 @@ std::vector<int> Acceptor::accept_connections() const
 
     std::cout << "Connection accepted from " << client_addr_str << " on socket " 
       << client_fd << std::endl << std::flush;
-    fds.push_back(client_fd);
+
+    connections.push_back(new Connection(client_fd, std::string(client_addr_str)));
   }
 
   if (-1 == client_fd && errno != EAGAIN && errno != EWOULDBLOCK) {
     throw std::runtime_error("accept");
   } 
 
-  return fds;
+  return connections;
 }
 
 void* Acceptor::get_in_addr(struct sockaddr *sa) 
