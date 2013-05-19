@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <stdlib.h> // calloc
 #include <unistd.h> // close, read, write
+#include <string.h> // strerr
 
 #define MAXEVENTS 64
 
@@ -81,20 +82,16 @@ void Poller::add_to_read_poll(Connection *connection)
   }
 }
 
-void Poller::print_data(int fd) const {
-  int count;
-  char buf[512];
-
-  while (0 < (count = read(fd, buf, sizeof buf))) {
-    if (-1 == (write(1, buf, count))) {
-      throw std::runtime_error("read");
-    }
+void Poller::remove(Connection *connection)
+{
+  static struct epoll_event event;
+  if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, connection->fd, &event)) {
+    throw std::runtime_error("epoll_ctl");
+  }
+  
+  if (-1 == close(connection->fd)) {
+    std::cout << strerror(errno) << std::endl;
   }
 
-  if (-1 == count && EAGAIN != errno) {
-    throw std::runtime_error("read");
-  } else if (count == 0) {
-    // The remote has closed the connection.
-    // TODO what happens here with keep-alive connections?
-  }
+  delete connection;
 }

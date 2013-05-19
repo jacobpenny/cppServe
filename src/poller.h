@@ -15,8 +15,8 @@ class Poller {
     void read_fd_handler(struct epoll_event &ev);
     void write_fd_handler(struct epoll_event &ev);
     void add_to_read_poll(Connection*);
+    void remove(Connection*); 
     void start();
-    void print_data(int fd) const; // temp
 
   private:
     const Acceptor& acceptor_;
