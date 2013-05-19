@@ -13,7 +13,8 @@ class Worker {
 
   private:
     void read_data(Connection*) const;
-    
+   
+  private:
     threadsafe_queue<Connection*> &queue_;
     Poller &poller_;
 };

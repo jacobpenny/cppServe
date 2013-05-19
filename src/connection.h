@@ -6,7 +6,10 @@
 
 class Connection {
   public:
+    enum State { REQUEST, RESPONSE };
+
     int fd;
+    State state;
     std::string address;
     std::vector<char> *buffer;
 
