@@ -8,8 +8,6 @@
 
 int main() 
 {
-
-
   threadsafe_queue<Connection*> work_queue;
   std::vector<std::thread> threads;
   Acceptor acceptor("3000"); // port 3000
@@ -18,8 +16,6 @@ int main()
   for(int i = 0; i < 4; ++i) {
     threads.push_back(std::thread(Worker(work_queue, poller)));
   }
-  
-
 
   poller.start();
 

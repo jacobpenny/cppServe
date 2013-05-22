@@ -20,23 +20,19 @@ void Worker::operator()() {
       case Connection::REQUEST:
         try {
           read_data(c);
-          // print buffer 
           std::copy(c->buffer->begin(), c->buffer->end(), std::ostream_iterator<char>(std::cout));
            
           if (parse_request(c)) {
             c->state = Connection::RESPONSE;
-            poller_.remove_from_poll(c);
-            poller_.add_to_write_poll(c);
+            poller_.switch_to_write_poll(c);
             // request received and parsed
           }
-          //poller_.rearm_read(c);
         } catch (std::runtime_error& e) {
           std::cout << e.what() << std::endl << std::flush;
           poller_.remove(c);
         }
         break;
       case Connection::RESPONSE:
-        std::cout << "Response" << std::endl;
         break;
       default:
         throw std::runtime_error("unknown state");
