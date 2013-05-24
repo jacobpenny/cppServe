@@ -37,27 +37,23 @@ void Poller::start()
   struct epoll_event event;
   events = (epoll_event*) calloc(MAXEVENTS, sizeof event);
 
-  // event loop
   while (1) {
     int numEvents = epoll_wait(epoll_fd_, events, MAXEVENTS, -1);
     for (int i = 0; i < numEvents; i++) {
-      auto connection_info = (Connection*) events[i].data.ptr;
-      int event_fd = connection_info->fd;
+      auto c = (Connection*) events[i].data.ptr;
+      int event_fd = c->fd;
 
       if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)) {
-        // An error has occured on this fd
         assert(event_fd != acceptor_.get_listen_fd());
-        close(event_fd); // will likely attach more data...
+        close(event_fd);
+        delete c;
         if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, event_fd, &events[i])) {
           std::cout << "epoll_ctl error in start()" << std::endl << std::flush;
         }
       } else if (event_fd == acceptor_.get_listen_fd()) {
-        // Incoming connection(s) on the listen socket
         listen_fd_handler();
-      } else if (events[i].events & EPOLLIN) {
-        // A socket is ready to read
-        work_queue_.push(connection_info);
-        //print_data(event_fd); // temporary
+      } else if (events[i].events & EPOLLIN && c->state == Connection::REQUEST) {
+        work_queue_.push(c);
       }
     }
   }
@@ -80,10 +76,16 @@ void Poller::add_to_read_poll(Connection *c)
 {
   static struct epoll_event event;
   event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-
   event.data.ptr = c;
-
   if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, c->fd, &event)) {
+    throw std::runtime_error("epoll_ctl");
+  }
+}
+
+void Poller::remove_from_read_poll(Connection *c)
+{
+  static struct epoll_event event;
+  if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, c->fd, &event)) {
     throw std::runtime_error("epoll_ctl");
   }
 }
@@ -92,32 +94,35 @@ void Poller::rearm_read(Connection *c)
 {
   static struct epoll_event event;
   event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-
   event.data.ptr = c;
-
   if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, c->fd, &event)) {
     throw std::runtime_error("epoll_ctl");
   } 
-}
-
-void Poller::remove_from_poll(Connection *c)
-{
-  static struct epoll_event event;
-  if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, c->fd, &event)) {
-    throw std::runtime_error("epoll_ctl");
-  }
 }
 
 void Poller::add_to_write_poll(Connection *c)
 {
   static struct epoll_event event;
   event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
-
   event.data.ptr = c;
-
   if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, c->fd, &event)) {
     throw std::runtime_error("epoll_ctl");
   }
+}
+
+void Poller::remove_from_write_poll(Connection *c)
+{
+  remove_from_read_poll(c);
+}
+
+void Poller::rearm_write(Connection *c)
+{
+  static struct epoll_event event;
+  event.events = EPOLLOUT | EPOLLET | EPOLLONESHOT;
+  event.data.ptr = c;
+  if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, c->fd, &event)) {
+    throw std::runtime_error("epoll_ctl");
+  } 
 }
 
 void Poller::remove(Connection *c)
@@ -126,10 +131,8 @@ void Poller::remove(Connection *c)
   if (-1 == epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, c->fd, &event)) {
     throw std::runtime_error("epoll_ctl");
   }
-  
   if (-1 == close(c->fd)) {
     std::cout << strerror(errno) << std::endl;
   }
-
   delete c;
 }

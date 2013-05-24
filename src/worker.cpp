@@ -20,23 +20,28 @@ void Worker::operator()() {
       case Connection::REQUEST:
         try {
           read_data(c);
-          // print buffer 
           std::copy(c->buffer->begin(), c->buffer->end(), std::ostream_iterator<char>(std::cout));
-           
-          if (parse_request(c)) {
+          if (parse_request(c)) { // done reading and parsing request
             c->state = Connection::RESPONSE;
-            poller_.remove_from_poll(c);
+            poller_.remove_from_read_poll(c); // put these into parse request?
             poller_.add_to_write_poll(c);
-            // request received and parsed
+            handle_request(c); // will return immediately if write isn't ready
+          } else {
+            poller_.rearm_read(c);
           }
-          //poller_.rearm_read(c);
         } catch (std::runtime_error& e) {
           std::cout << e.what() << std::endl << std::flush;
-          poller_.remove(c);
+          poller_.remove_from_read_poll(c);
+          delete c;
         }
         break;
       case Connection::RESPONSE:
-        std::cout << "Response" << std::endl;
+        try {
+          handle_request(c);
+          std::cout << "Response" << std::endl;
+        } catch (std::runtime_error& e) {
+          std::cout << e.what() << std::endl << std::flush;
+        }
         break;
       default:
         throw std::runtime_error("unknown state");
@@ -62,7 +67,33 @@ void Worker::read_data(Connection* c) const
 
 bool Worker::parse_request(Connection* c) const
 {
+  c->type = Connection::STATIC;
   return true;
 }
 
+void Worker::handle_request(Connection* c) const
+{
+  int count = write(c->fd, &*(c->buffer->begin() + c->writeMarker), c->buffer->size() - c->writeMarker);
+  c->writeMarker += count;
+  std::cout << count << std::endl << std::flush;
+  poller_.remove(c);
+  
+  switch (c->type) {
+    case Connection::STATIC:
+       
+    
+    break;
+  }
+
+  /* pseudo
+    if (static resource)
+      if (not in cache)
+        add to cache, set byteSent to 0
+      send from cache, keeping track of bytes sent for subsequent calls      
+    else if (cgi)
+      store cgi output in connection->writebuffer, send what we can, keeping track of bytes sent
+    end
+  */
+
+}
 

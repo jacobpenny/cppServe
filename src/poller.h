@@ -14,10 +14,15 @@ class Poller {
     void listen_fd_handler();
     void read_fd_handler(struct epoll_event &ev);
     void write_fd_handler(struct epoll_event &ev);
+    
     void add_to_read_poll(Connection*);
+    void remove_from_read_poll(Connection*);
     void rearm_read(Connection*);
-    void remove_from_poll(Connection*);
+    
     void add_to_write_poll(Connection*);
+    void remove_from_write_poll(Connection*);
+    void rearm_write(Connection*); 
+    
     void remove(Connection*); 
     void start();
 
