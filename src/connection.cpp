@@ -1,8 +1,8 @@
 #include "connection.h"
+#include "request.h"
 
-Connection::Connection(int f, std::string addr) 
-  : fd(f), state(State::REQUEST), address(addr), buffer(new std::vector<char>(1024)), writeMarker(0) {}
+Connection::Connection(int f, std::string addr)
+: fd(f), address(addr), state(State::REQUEST), request(new Request()) {}
 
-Connection::~Connection() { delete buffer; }
 
 

@@ -5,20 +5,20 @@
 #include <string>
 #include <cstddef>
 
+class Request;
+
 class Connection {
   public:
     enum State { REQUEST, RESPONSE };
-    enum RequestType { STATIC, CGI };
 
     int fd;
-    State state;
     std::string address;
-    std::vector<char> *buffer;
-    size_t writeMarker;
-    RequestType type;
+    State state;
+
+    Request* request;
 
     Connection(int fd, std::string addr);
-    ~Connection();
+    ~Connection() {}
 };
 
 #endif

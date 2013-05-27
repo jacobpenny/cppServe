@@ -1,6 +1,7 @@
 #include "worker.h"
 #include "connection.h"
 #include "poller.h"
+#include "request.h"
 
 #include <stdexcept>
 #include <thread>
@@ -14,14 +15,13 @@ void Worker::operator()() {
     Connection *c;
     queue_.wait_and_pop(c);
     
-    std::cout << "Thread " << std::this_thread::get_id() << std::endl;
     switch (c->state)
     {
       case Connection::REQUEST:
         try {
           read_data(c);
-          std::copy(c->buffer->begin(), c->buffer->end(), std::ostream_iterator<char>(std::cout));
-          if (parse_request(c)) { // done reading and parsing request
+          std::copy(c->request->raw_request->begin(), c->request->raw_request->end(), std::ostream_iterator<char>(std::cout));
+          if (c->request->parse()) { // done reading and parsing request
             c->state = Connection::RESPONSE;
             poller_.remove_from_read_poll(c); // put these into parse request?
             poller_.add_to_write_poll(c);
@@ -55,7 +55,7 @@ void Worker::read_data(Connection* c) const
   char buf[512];
 
   while (0 < (count = read(c->fd, buf, sizeof buf))) {
-    std::copy(buf, buf + count, back_inserter(*(c->buffer)));
+    std::copy(buf, buf + count, back_inserter(*(c->request->raw_request)));
   }
   
   if (-1 == count && EAGAIN != errno) {
@@ -65,23 +65,20 @@ void Worker::read_data(Connection* c) const
   }
 }
 
-bool Worker::parse_request(Connection* c) const
-{
-  c->type = Connection::STATIC;
-  return true;
-}
-
 void Worker::handle_request(Connection* c) const
 {
-  int count = write(c->fd, &*(c->buffer->begin() + c->writeMarker), c->buffer->size() - c->writeMarker);
-  c->writeMarker += count;
+  int count = write(c->fd, &*(c->request->raw_request->begin() + c->request->write_marker), c->request->raw_request->size() - c->request->write_marker);
+  c->request->write_marker += count;
   std::cout << count << std::endl << std::flush;
   poller_.remove(c);
   
-  switch (c->type) {
-    case Connection::STATIC:
-       
-    
+  switch (c->request->request_type) {
+    case Request::STATIC:
+      std::string file_name(c->request->request_line[1]);
+      ifstream file;
+      file.open(std::string(file_name.begin() + 1, file_name.end()));
+      
+
     break;
   }
 
