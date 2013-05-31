@@ -15,7 +15,9 @@ class Request {
     Request();
     ~Request();
     bool parse();
-  
+    size_t resource_size();
+    bool is_get() const;
+
   public:
     buffer *raw_request;
     buffer::const_iterator request_body;
@@ -28,12 +30,13 @@ class Request {
 
     bool is_parsed;
     bool has_body;
-    int write_marker;
 
   private:
     // buffer::iterator prev_position_;
     buffer::const_iterator find_string(buffer::const_iterator begin, buffer::const_iterator end, std::string s);
     void parse_headers(buffer::const_iterator begin, buffer::const_iterator end);
+  private:
+    size_t resource_size_;
 };
 
 #endif

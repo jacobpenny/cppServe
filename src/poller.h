@@ -22,6 +22,7 @@ class Poller {
     void add_to_write_poll(Connection*);
     void remove_from_write_poll(Connection*);
     void rearm_write(Connection*); 
+    void switch_to_write_poll(Connection*); 
     
     void remove(Connection*); 
     void start();

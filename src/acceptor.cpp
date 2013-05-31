@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <string.h> // memset
 #include <arpa/inet.h> // inet_ntop
+#include <netinet/tcp.h> // TCP_NODELAY
 
 Acceptor::Acceptor(const char *port)
 {
@@ -17,7 +18,7 @@ Acceptor::Acceptor(const char *port)
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
-  
+
   int rv = getaddrinfo(NULL, port, &hints, &servinfo);
   if (0 != rv) { 
     throw std::runtime_error("getaddrinfo"); 
@@ -63,7 +64,7 @@ std::vector<Connection*> Acceptor::accept_connections() const
 {
   static struct sockaddr_storage client_addr;
   static socklen_t sin_size;
-  static int client_fd;
+  int client_fd;
   std::vector<Connection*> connections;
 
   sin_size = sizeof(client_addr);
@@ -80,6 +81,15 @@ std::vector<Connection*> Acceptor::accept_connections() const
     if (-1 == make_non_blocking(client_fd)) {
       throw std::runtime_error("make_non_blocking");
     }
+
+    int flag = 1;
+    int result = setsockopt(client_fd,            /* socket affected */
+        IPPROTO_TCP,     /* set option at TCP level */
+        TCP_NODELAY,     /* name of option */
+        (char *) &flag,  /* the cast is historical
+                            cruft */
+        sizeof(int));    /* length of option value */
+    if (result < 0) { std::cout << "ERROR in SETSOCK" << std::endl; }
 
     std::cout << "Connection accepted from " << client_addr_str << " on socket " 
       << client_fd << std::endl << std::flush;

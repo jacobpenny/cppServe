@@ -14,6 +14,8 @@ class Worker {
   private:
     void read_data(Connection*) const;
     void handle_request(Connection*) const;
+    bool send_static_file(Connection*, size_t) const;
+    void send_static_head(Connection*, size_t) const;
   private:
     threadsafe_queue<Connection*> &queue_;
     Poller &poller_;
