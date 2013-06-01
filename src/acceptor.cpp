@@ -45,7 +45,6 @@ Acceptor::Acceptor(const char *port)
     throw std::runtime_error("bind"); 
   }
 
-  // Should it be made non-blocking in Poller instead?
   if (-1 == make_non_blocking(listen_fd_)) {
     throw std::runtime_error("make_non_blocking");
   }
@@ -57,7 +56,7 @@ Acceptor::Acceptor(const char *port)
 
 Acceptor::~Acceptor() 
 {
-  // TODO
+  close(listen_fd_); 
 }
 
 std::vector<Connection*> Acceptor::accept_connections() const
@@ -70,26 +69,15 @@ std::vector<Connection*> Acceptor::accept_connections() const
   sin_size = sizeof(client_addr);
 
   while (-1 != (client_fd = accept(listen_fd_, (struct sockaddr *)&client_addr, &sin_size))) {
-    // No error, time to accept connection and add to epoll instance
     char client_addr_str[INET_ADDRSTRLEN];
     inet_ntop(client_addr.ss_family, 
         get_in_addr((struct sockaddr *)&client_addr), 
         client_addr_str, 
         sizeof(client_addr_str));
 
-    // Add this connection to the epoll instance, first make non-blocking
     if (-1 == make_non_blocking(client_fd)) {
       throw std::runtime_error("make_non_blocking");
     }
-
-    int flag = 1;
-    int result = setsockopt(client_fd,            /* socket affected */
-        IPPROTO_TCP,     /* set option at TCP level */
-        TCP_NODELAY,     /* name of option */
-        (char *) &flag,  /* the cast is historical
-                            cruft */
-        sizeof(int));    /* length of option value */
-    if (result < 0) { std::cout << "ERROR in SETSOCK" << std::endl; }
 
     std::cout << "Connection accepted from " << client_addr_str << " on socket " 
       << client_fd << std::endl << std::flush;

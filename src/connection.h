@@ -10,7 +10,12 @@ class Request;
 class Connection {
   public:
     enum State { REQUEST, RESPONSE };
-
+    
+    Connection(int fd, std::string addr);
+    ~Connection() {}
+    void generate_response_head();
+  
+  public:
     int fd;
     std::string address;
     State state;
@@ -19,11 +24,6 @@ class Connection {
     bool head_sent;
     Request* request;
     std::string response_head;
-
-    void generate_response_head();
-
-    Connection(int fd, std::string addr);
-    ~Connection() {}
 };
 
 #endif

@@ -9,18 +9,13 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
-#include <unistd.h>
-
+#include <unistd.h> // read
 #include <sys/sendfile.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <time.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 
 void Worker::operator()() {
   while (1) {
@@ -32,11 +27,14 @@ void Worker::operator()() {
       case Connection::REQUEST:
         try {
           read_data(c);
-          std::copy(c->request->raw_request->begin(), c->request->raw_request->end(), std::ostream_iterator<char>(std::cout));
+          std::copy(c->request->raw_request->begin(),
+                    c->request->raw_request->end(),
+                    std::ostream_iterator<char>(std::cout));
+
           if (c->request->parse()) { // done reading and parsing request
             c->state = Connection::RESPONSE;
             c->generate_response_head(); 
-            handle_request(c); // will return immediately if write isn't ready
+            handle_request(c); 
           } else {
             poller_.rearm_read(c);
           }
@@ -68,7 +66,9 @@ void Worker::read_data(Connection* c) const
   char buf[512];
 
   while (0 < (count = read(c->fd, buf, sizeof buf))) {
-    std::copy(buf, buf + count, back_inserter(*(c->request->raw_request)));
+    std::copy(buf,
+              buf + count,
+              back_inserter(*(c->request->raw_request)));
   }
 
   if (-1 == count && errno != EAGAIN) { 
@@ -94,7 +94,7 @@ void Worker::handle_request(Connection* c) const
           poller_.rearm_write(c);
         }
       } else {
-        assert(false);
+        poller_.rearm_write(c);
       }
       break;
   }
@@ -102,7 +102,6 @@ void Worker::handle_request(Connection* c) const
 
 bool Worker::send_static_file(Connection* c, size_t offset) const
 {
-  struct stat info;
   int resource_fd;
   std::string file_name(c->request->request_line[1]);
   
@@ -110,13 +109,11 @@ bool Worker::send_static_file(Connection* c, size_t offset) const
     throw std::runtime_error("send_static_file_open");
   } 
   
-  if (0 != fstat(resource_fd, &info)) { 
-    close(resource_fd);
-    throw std::runtime_error("send_static_file-fstat");
-  }
-  
   off_t off = offset;
-  int count = sendfile(c->fd, resource_fd, &off, info.st_size - c->bytes_sent); 
+  int count = sendfile(c->fd,
+                       resource_fd,
+                       &off,
+                       c->request->resource_size() - c->bytes_sent); 
   if (-1 == count && errno == EAGAIN) { // would block
     close(resource_fd);
     return false;
@@ -130,8 +127,12 @@ bool Worker::send_static_file(Connection* c, size_t offset) const
 }
 
 void Worker::send_static_head(Connection* c, size_t offset) const {
-  int count = send(c->fd, c->response_head.c_str() + offset, (c->response_head.size() - c->head_bytes_sent), 0);
-  if (-1 == count && errno == EAGAIN) { // would block, rearm?
+  int count = send(c->fd,
+                   c->response_head.c_str() + offset,
+                   c->response_head.size() - c->head_bytes_sent,
+                   0);
+  
+  if (-1 == count && errno == EAGAIN) {
     return;
   } else if (-1 == count) {
     throw std::runtime_error("send_static_file-sendfile");

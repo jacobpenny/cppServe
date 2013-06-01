@@ -59,13 +59,12 @@ void Request::parse_headers(buffer::const_iterator begin, buffer::const_iterator
 size_t Request::resource_size() {
   if (-1 == resource_size_) {
     struct stat info;
-    int fd;
-    off_t count;
+    int resource_fd;
     std::string file_name(request_line[1]);
-    if (-1 == (fd = open(file_name.c_str() + 1, O_RDONLY))) { // +1 for leading slash
+    if (-1 == (resource_fd = open(file_name.c_str() + 1, O_RDONLY))) { // +1 for leading slash
       std::cout << strerror(errno) << std::endl;
     } 
-    if (0 != fstat(fd, &info)) { 
+    if (0 != fstat(resource_fd, &info)) { 
       perror("fstat() error"); 
     }
     resource_size_ = info.st_size;
